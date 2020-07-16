@@ -5,89 +5,109 @@ using UnityEngine.Networking;
 using UnityEngine.UI;
 using SimpleJSON;
 
-public class COVIDManager : MonoBehaviour
+namespace PieChart.ViitorCloud
 {
 
-    public GameObject prefab;
-    public GameObject parentContent;
 
-    public GameObject districtParentContent;
-    JSONNode allData;
-
-    // Start is called before the first frame update
-    void Start()
+    public class COVIDManager : MonoBehaviour
     {
-        // COVID data request
-        StartCoroutine(GetData());
-    }
 
-    IEnumerator GetData()
-    {
-        UnityWebRequest www = UnityWebRequest.Get("https://api.covid19india.org/v3/data-2020-07-11.json");
-        yield return www.SendWebRequest();
+        public GameObject prefab;
+        public GameObject parentContent;
 
-        if (www.isNetworkError || www.isHttpError)
+        public GameObject districtParentContent;
+        JSONNode allData;
+
+        public GameObject pieChartGO;
+        public PieChart pieChart;
+
+        // Start is called before the first frame update
+        void Start()
         {
-            Debug.Log(www.error);
+            // COVID data request
+            StartCoroutine(GetData());
         }
-        else
+
+        IEnumerator GetData()
         {
-            // Store data
-            allData = JSON.Parse(www.downloadHandler.text);
+            UnityWebRequest www = UnityWebRequest.Get("https://api.covid19india.org/v3/data-2020-07-11.json");
+            yield return www.SendWebRequest();
 
-            int totalConfirmed = allData["MH"]["total"]["confirmed"];
-
-            foreach (KeyValuePair<string, JSONNode> data in allData)
+            if (www.isNetworkError || www.isHttpError)
             {
-                // Debug.Log(data.Key);
-                // Debug.Log(data.Value["total"]["confirmed"].Value);
-                GameObject instance = Instantiate(prefab, new Vector3(0, 0, 0), Quaternion.identity);
-                instance.transform.SetParent(parentContent.GetComponent<Transform>());
+                Debug.Log(www.error);
+            }
+            else
+            {
+                // Store data
+                allData = JSON.Parse(www.downloadHandler.text);
 
-                // Debug.Log(data.Key);
-                // Debug.Log(allData[data.Key]["total"]["confirmed"]);
+                int totalConfirmed = allData["MH"]["total"]["confirmed"];
 
-                Text stateCode = instance.transform.GetChild(0).gameObject.GetComponent<Text>();
-                stateCode.text = data.Key;
+                foreach (KeyValuePair<string, JSONNode> data in allData)
+                {
+                    // Debug.Log(data.Key);
+                    // Debug.Log(data.Value["total"]["confirmed"].Value);
+                    GameObject instance = Instantiate(prefab, new Vector3(0, 0, 0), Quaternion.identity);
+                    instance.transform.SetParent(parentContent.GetComponent<Transform>());
 
-                Text confirmedNumbers = instance.transform.GetChild(1).gameObject.GetComponent<Text>();
-                confirmedNumbers.text = allData[data.Key]["total"]["confirmed"];
+                    // Debug.Log(data.Key);
+                    // Debug.Log(allData[data.Key]["total"]["confirmed"]);
 
-                instance.GetComponent<Button>().onClick.AddListener(() => districtButtonClicked(data.Key));
+                    Text stateCode = instance.transform.GetChild(0).gameObject.GetComponent<Text>();
+                    stateCode.text = data.Key;
+
+                    Text confirmedNumbers = instance.transform.GetChild(1).gameObject.GetComponent<Text>();
+                    confirmedNumbers.text = allData[data.Key]["total"]["confirmed"];
+
+                    instance.GetComponent<Button>().onClick.AddListener(() => districtButtonClicked(data.Key));
+                }
             }
         }
-    }
 
-    private void districtButtonClicked(string stateCode)
-    {
-        clearDistrictList();
-        // Debug.Log(stateCode);
-        foreach (KeyValuePair<string, JSONNode> data in allData[stateCode]["districts"])
+        private void districtButtonClicked(string stateCode)
         {
-            GameObject instance = Instantiate(prefab, new Vector3(0, 0, 0), Quaternion.identity);
-            instance.transform.SetParent(districtParentContent.GetComponent<Transform>());
+            clearDistrictList();
+            // Debug.Log(stateCode);
+            foreach (KeyValuePair<string, JSONNode> data in allData[stateCode]["districts"])
+            {
+                GameObject instance = Instantiate(prefab, new Vector3(0, 0, 0), Quaternion.identity);
+                instance.transform.SetParent(districtParentContent.GetComponent<Transform>());
 
-            Text districtName = instance.transform.GetChild(0).gameObject.GetComponent<Text>();
-            districtName.text = data.Key;
+                Text districtName = instance.transform.GetChild(0).gameObject.GetComponent<Text>();
+                districtName.text = data.Key;
 
-            Text confirmedNumbers = instance.transform.GetChild(1).gameObject.GetComponent<Text>();
-            confirmedNumbers.text = data.Value["total"]["confirmed"];
+                Text confirmedNumbers = instance.transform.GetChild(1).gameObject.GetComponent<Text>();
+                confirmedNumbers.text = data.Value["total"]["confirmed"];
+
+                instance.GetComponent<Button>().onClick.AddListener(() => showPieChart(stateCode, data.Key));
+            }
         }
-    }
 
-    private void clearDistrictList()
-    {
-        Transform districtTransform = districtParentContent.GetComponent<Transform>();
-
-        foreach (Transform district in districtTransform)
+        private void showPieChart(string stateCode, string districtName)
         {
-            Destroy(district.gameObject);
+            float confirmed = allData[stateCode]["districts"][districtName]["total"]["confirmed"];
+            float recovered = allData[stateCode]["districts"][districtName]["total"]["recovered"];
+
+            pieChart.segments = 2;
+            pieChart.Data = new float[] { confirmed, recovered };
+            pieChartGO.SetActive(true);
         }
-    }
 
-    // Update is called once per frame
-    void Update()
-    {
+        private void clearDistrictList()
+        {
+            Transform districtTransform = districtParentContent.GetComponent<Transform>();
 
+            foreach (Transform district in districtTransform)
+            {
+                Destroy(district.gameObject);
+            }
+        }
+
+        // Update is called once per frame
+        void Update()
+        {
+
+        }
     }
 }
